@@ -7,6 +7,7 @@ import time
 
 from dotenv import load_dotenv
 
+'''ПРИВЕТ МОЙ ЛЮБИМЫЙ РЕВЬЮЕР!'''
 
 load_dotenv()
 
@@ -114,6 +115,7 @@ def parse_status(homework):
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
+
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
@@ -142,6 +144,7 @@ def main():
             error_message = f'Ошибка работы программы{error}'
             send_message(bot, error_message)
             time.sleep(RETRY_PERIOD)
+
 
 if __name__ == '__main__':
     main()
