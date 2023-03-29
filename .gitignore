@@ -150,3 +150,6 @@ static/
 posts/static/
 media/
 
+# мои фаилы
+.env
+
