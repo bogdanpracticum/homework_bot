@@ -1,3 +1,4 @@
+from http import HTTPStatus
 import logging
 import os
 import sys
@@ -58,34 +59,47 @@ def send_message(bot, message):
         raise TypeError(f'Неудачная отправка сообщения: {e}')
 
 
+def check_api_response(response):
+    """Проверяет статус ответа от API."""
+    if response.status_code == HTTPStatus.OK:
+        response = response.json()
+        return response
+    else:
+        raise ValueError(f'Проблемы с доступом к API. '
+                         f'Код ответа: {response.status_code}')
+
+
 def get_api_answer(timestamp):
     """Отправляет запрос к API, чтобы узнать статус домашней работы."""
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-        if response.status_code == 200:
-            response = response.json()
-            return response
-        else:
-            raise ValueError(f'Проблемы с доступом к API.'
-                             f'Код ответа: {response.status_code}')
+        check_api_response(response)
     except Exception as e:
         raise ValueError(f'Запрос к Api неудачен {e}')
 
+    return response.json()
+
 
 def check_response(response):
-    """Response check."""
+    """проверка корректности ответа."""
     if not isinstance(response, dict):
-        raise TypeError('Error with API response type')
+        raise TypeError('вернувшееся значение не словарь')
 
     if ('homeworks' not in response) or ('current_date' not in response):
         raise TypeError(
-            'Emty reply from API'
+            'Вернулось пустое значение'
         )
     homework = response.get('homeworks')
 
     if not isinstance(homework, list):
-        raise TypeError('Homeworks type is not list')
+        raise TypeError('Ключ Homeworks вернулся не списком')
+
+    if not homework:
+        raise ValueError(' Домашняя работа не отправленна ')
+
+    if not isinstance(homework[0], dict):
+        raise TypeError('Первый вернувшейся элемент homework не словарь')
 
     return homework
 
@@ -123,26 +137,30 @@ def main():
         sys.exit()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    last_message = ''
 
     timestamp = int(time.time())
     while True:
         try:
             response_json = get_api_answer(timestamp)
             check_response(response_json)
-            print(response_json['homeworks'])
             if response_json['homeworks']:
-                print(response_json['homeworks'][0])
                 message = parse_status(response_json['homeworks'][0])
+            if message != last_message:
                 send_message(bot, message)
+                last_message = message
                 timestamp = response_json['current_date']
             else:
                 message = 'Данные не обновлялись.'
                 logging.info(message)
-            time.sleep(RETRY_PERIOD)
         except Exception as error:
             logging.error(f'Ошибка работы программы{error}')
             error_message = f'Ошибка работы программы{error}'
-            send_message(bot, error_message)
+            if message != last_message:
+                send_message(bot, message)
+                last_message = message
+                send_message(bot, error_message)
+        finally:
             time.sleep(RETRY_PERIOD)
 
 
