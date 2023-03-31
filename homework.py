@@ -64,15 +64,17 @@ def get_api_answer(timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-        if response.status_code != HTTPStatus.OK:
-            raise ValueError(f'Проблемы с доступом к API. '
-                             f'Код ответа: {response.status_code}')
-        response = response.json()
-        return response
-
     except requests.RequestException as e:
         logging.error(f'Ошибка при отправке запроса к API: {e}')
         raise ValueError(f'Ошибка при отправке запроса к API: {e}')
+
+    if response.status_code != HTTPStatus.OK:
+        logging.error(f'Проблемы с доступом к API: {response.status_code}')
+        raise ValueError(f'Проблемы с доступом к API. '
+                         f'Код ответа: {response.status_code}')
+
+    response = response.json()
+    return response
 
 
 def check_response(response):
