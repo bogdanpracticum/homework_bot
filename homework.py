@@ -70,9 +70,8 @@ def get_api_answer(timestamp):
         response = response.json()
         return response
     except requests.RequestException as e:
+        logging.error(f'Ошибка при отправке запроса к API: {e}')
         raise ValueError(f'Ошибка при отправке запроса к API: {e}')
-    except Exception as e:
-        raise ValueError(f'Ошибка при обработке ответа от API: {e}')
 
 
 def check_response(response):
