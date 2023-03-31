@@ -59,26 +59,20 @@ def send_message(bot, message):
         raise TypeError(f'Неудачная отправка сообщения: {e}')
 
 
-def check_api_response(response):
-    """Проверяет статус ответа от API."""
-    if response.status_code == HTTPStatus.OK:
-        response = response.json()
-        return response
-    else:
-        raise ValueError(f'Проблемы с доступом к API. '
-                         f'Код ответа: {response.status_code}')
-
-
 def get_api_answer(timestamp):
-    """Отправляет запрос к API, чтобы узнать статус домашней работы."""
+    """Отправляет запрос к API, узнает статус ДЗ,проверяет ответ API."""
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-        check_api_response(response)
+        if response.status_code != HTTPStatus.OK:
+            raise ValueError(f'Проблемы с доступом к API. '
+                             f'Код ответа: {response.status_code}')
+        response = response.json()
+        return response
+    except requests.RequestException as e:
+        raise ValueError(f'Ошибка при отправке запроса к API: {e}')
     except Exception as e:
-        raise ValueError(f'Запрос к Api неудачен {e}')
-
-    return response.json()
+        raise ValueError(f'Ошибка при обработке ответа от API: {e}')
 
 
 def check_response(response):
@@ -144,8 +138,12 @@ def main():
         try:
             response_json = get_api_answer(timestamp)
             check_response(response_json)
-            if response_json['homeworks']:
-                message = parse_status(response_json['homeworks'][0])
+            response_json['homeworks']
+            message = parse_status(response_json['homeworks'][0])
+        except Exception as error:
+            logging.error(f'Ошибка работы программы{error}')
+            message = f'Ошибка работы программы{error}'
+        finally:
             if message != last_message:
                 send_message(bot, message)
                 last_message = message
@@ -153,14 +151,7 @@ def main():
             else:
                 message = 'Данные не обновлялись.'
                 logging.info(message)
-        except Exception as error:
-            logging.error(f'Ошибка работы программы{error}')
-            error_message = f'Ошибка работы программы{error}'
-            if message != last_message:
                 send_message(bot, message)
-                last_message = message
-                send_message(bot, error_message)
-        finally:
             time.sleep(RETRY_PERIOD)
 
 
